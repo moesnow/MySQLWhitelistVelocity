@@ -5,13 +5,27 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '7.0.0'
 }
 
-group = 'top.kotori'
-version = '1.1'
+repositories {
+    maven {
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+}
 
-String id = 'mysqlwhitelistvelocity'
-String link = 'https://github.com/moesnow/MySQLWhitelistVelocity'
-String description = 'Velocity plugin for managing a Minecraft whitelist using MySQL'
-String authors = 'moesnow'
+dependencies {
+    compileOnly 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
+    annotationProcessor 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
+    implementation 'org.mariadb.jdbc:mariadb-java-client:2.7.11'
+    implementation 'org.bstats:bstats-velocity:3.0.2'
+}
+
+shadowJar {
+    relocate 'org.bstats', 'top.kotori.mysqlwhitelistvelocity'
+}
+
+group = 'top.kotori'
+version = '1.2.0'
+description = 'Velocity plugin for managing a Minecraft whitelist using MySQL'
 
 def targetJavaVersion = 17
 java {
@@ -31,29 +45,16 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
-repositories {
-    maven {
-        name = 'papermc'
-        url = 'https://repo.papermc.io/repository/maven-public/'
-    }
-}
-
-dependencies {
-    compileOnly 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
-    annotationProcessor 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
-    implementation 'org.mariadb.jdbc:mariadb-java-client:2.7.4'
-}
-
 def templateSource = file('src/main/templates')
 def templateDest = layout.buildDirectory.dir('generated/sources/templates')
 def generateTemplates = tasks.register('generateTemplates', Copy) { task ->
     def props = [
-            'id'         : id,
+            'id'         : "mysqlwhitelistvelocity",
             'name'       : project.name,
             'version'    : project.version,
-            'link'       : link,
-            'description': description,
-            'authors'    : authors
+            'link'       : "https://github.com/moesnow/MySQLWhitelistVelocity",
+            'description': project.description,
+            'authors'    : "moesnow"
     ]
     task.inputs.properties props
 

@@ -18,6 +18,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bstats.velocity.Metrics;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -46,17 +47,20 @@ public class MySQLWhitelistVelocity {
     private final Path dataDirectory;
     private final Path configFile;
     private Properties config;
+    private final Metrics.Factory metricsFactory;
 
     @Inject
     public MySQLWhitelistVelocity(
             ProxyServer server,
             Logger logger,
-            @DataDirectory Path dataDirectory
+            @DataDirectory Path dataDirectory,
+            Metrics.Factory metricsFactory
     ) {
         this.server = server;
         this.logger = logger;
         this.dataDirectory = dataDirectory;
         this.configFile = dataDirectory.resolve("config.properties");
+        this.metricsFactory = metricsFactory;
         new org.mariadb.jdbc.Driver();
     }
 
@@ -69,8 +73,11 @@ public class MySQLWhitelistVelocity {
     }
 
     @Subscribe
-    public void onEnable(ProxyInitializeEvent event) {
+    public void onProxyInitialization(ProxyInitializeEvent event) {
         try {
+            int pluginId = 20846;
+            Metrics metrics = metricsFactory.make(this, pluginId);
+
             CommandManager commandManager = server.getCommandManager();
             CommandMeta commandMeta = commandManager.metaBuilder("mywl")
                     .plugin(this)
