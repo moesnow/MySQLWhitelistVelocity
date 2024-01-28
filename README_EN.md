@@ -60,3 +60,7 @@ If you encounter any issues or have suggestions for improvement, please open an 
 ## License
 
 This plugin is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+
+## bStats
+
+[![metrics](https://bstats.org/signatures/velocity/MySQLWhitelistVelocity.svg)](https://bstats.org/plugin/velocity/MySQLWhitelistVelocity/20846)

@@ -60,3 +60,7 @@ message: Sorry, you are not in the whitelist.
 ## 许可
 
 此插件采用 GPL-3.0 许可证授权 - 有关详细信息，请参阅 [LICENSE](LICENSE) 文件。
+
+## bStats
+
+[![metrics](https://bstats.org/signatures/velocity/MySQLWhitelistVelocity.svg)](https://bstats.org/plugin/velocity/MySQLWhitelistVelocity/20846)
