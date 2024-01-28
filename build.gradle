@@ -6,9 +6,12 @@ plugins {
 }
 
 group = 'top.kotori'
-version = '1.0-SNAPSHOT'
-def id = 'mysqlwhitelistvelocity'
-def description = 'MySQLWhitelistVelocity'
+version = '1.1'
+
+String id = 'mysqlwhitelistvelocity'
+String link = 'https://github.com/moesnow/MySQLWhitelistVelocity'
+String description = 'Velocity plugin for managing a Minecraft whitelist using MySQL'
+String authors = 'moesnow'
 
 def targetJavaVersion = 17
 java {
@@ -45,10 +48,12 @@ def templateSource = file('src/main/templates')
 def templateDest = layout.buildDirectory.dir('generated/sources/templates')
 def generateTemplates = tasks.register('generateTemplates', Copy) { task ->
     def props = [
-            'id': id,
-            'name': project.name,
-            'version': project.version,
-            'description': description
+            'id'         : id,
+            'name'       : project.name,
+            'version'    : project.version,
+            'link'       : link,
+            'description': description,
+            'authors'    : authors
     ]
     task.inputs.properties props
 

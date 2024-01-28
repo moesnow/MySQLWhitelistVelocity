@@ -1,49 +1,51 @@
 package top.kotori.mysqlwhitelistvelocity;
 
-import java.io.*;
-import java.sql.*;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
-import java.nio.charset.StandardCharsets;
-import java.util.Properties;
-
-import com.mojang.brigadier.arguments.StringArgumentType;
+import com.google.inject.Inject;
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
-import net.kyori.adventure.text.format.NamedTextColor;
-
-import com.google.inject.Inject;
-import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
-import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.ResultedEvent.ComponentResult;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.LoginEvent;
+import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
-import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.slf4j.Logger;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.sql.*;
+import java.util.Properties;
 import java.util.UUID;
 
 @Plugin(
         id = BuildConstants.ID,
         name = BuildConstants.NAME,
         version = BuildConstants.VERSION,
-        description = BuildConstants.DESCRIPTION
+        url = BuildConstants.URL,
+        description = BuildConstants.DESCRIPTION,
+        authors = BuildConstants.AUTHORS
 )
 public class MySQLWhitelistVelocity {
+    public static Connection connection;
     private final ProxyServer server;
     private final Logger logger;
     private final Path dataDirectory;
     private final Path configFile;
     private Properties config;
-    public static Connection connection;
 
     @Inject
     public MySQLWhitelistVelocity(
@@ -58,23 +60,28 @@ public class MySQLWhitelistVelocity {
         new org.mariadb.jdbc.Driver();
     }
 
+    public static synchronized void closeConnection() {
+        try {
+            connection.close();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error while closing connection", e);
+        }
+    }
+
     @Subscribe
     public void onEnable(ProxyInitializeEvent event) {
         try {
             CommandManager commandManager = server.getCommandManager();
             CommandMeta commandMeta = commandManager.metaBuilder("mywl")
-                    // This will create a new alias for the command "/test"
-                    // with the same arguments and functionality
-                    .aliases("otherAlias", "anotherAlias")
                     .plugin(this)
                     .build();
-            BrigadierCommand commandToRegister = this.createBrigadierCommand(server);
+            BrigadierCommand commandToRegister = this.createBrigadierCommand();
             commandManager.register(commandMeta, commandToRegister);
 
             this.saveDefaultConfig();
             this.config = loadConfig();
 
-            if (Boolean.parseBoolean(config.getProperty("enabled"))){
+            if (Boolean.parseBoolean(config.getProperty("enabled"))) {
                 server.getScheduler().buildTask(this, this::createDatabaseTable).schedule();
             }
 
@@ -83,6 +90,7 @@ public class MySQLWhitelistVelocity {
             logger.error("Error during plugin initialization", e);
         }
     }
+
     private void createDatabaseTable() {
         openConnection();
 
@@ -95,6 +103,7 @@ public class MySQLWhitelistVelocity {
             closeConnection();
         }
     }
+
     public void saveDefaultConfig() {
         if (Files.notExists(dataDirectory)) {
             try {
@@ -115,7 +124,7 @@ public class MySQLWhitelistVelocity {
                     database: minecraft
                     port: 3306
                     table: mysql_whitelist
-                    
+                                        
                     # Kick message
                     message: Sorry, you are not in the whitelist.
                     """;
@@ -127,11 +136,12 @@ public class MySQLWhitelistVelocity {
         }
 
     }
+
     private Properties loadConfig() {
         Properties properties = new Properties();
 
         if (Files.exists(configFile)) {
-            try (InputStream input = Files.newInputStream(configFile,StandardOpenOption.READ)) {
+            try (InputStream input = Files.newInputStream(configFile, StandardOpenOption.READ)) {
                 InputStreamReader reader = new InputStreamReader(input, StandardCharsets.UTF_8);
                 properties.load(reader);
             } catch (IOException e) {
@@ -141,7 +151,8 @@ public class MySQLWhitelistVelocity {
 
         return properties;
     }
-//    private void saveConfig(Properties properties) {
+
+    //    private void saveConfig(Properties properties) {
 //        try (OutputStream output = Files.newOutputStream(configFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
 //            OutputStreamWriter writer = new OutputStreamWriter(output,StandardCharsets.UTF_8);
 //            properties.store(writer, "Updated Configuration");
@@ -156,15 +167,8 @@ public class MySQLWhitelistVelocity {
             throw new RuntimeException("Error while opening connection", e);
         }
     }
-    public static synchronized void closeConnection() {
-        try {
-            connection.close();
-        } catch (SQLException e) {
-            throw new RuntimeException("Error while closing connection", e);
-        }
-    }
 
-    public void addWhitelist(CommandSource source,String player) {
+    public void addWhitelist(CommandSource source, String player) {
         this.openConnection();
 
         try {
@@ -189,7 +193,7 @@ public class MySQLWhitelistVelocity {
 
     }
 
-    public void delWhitelist(CommandSource source,String player) {
+    public void delWhitelist(CommandSource source, String player) {
         this.openConnection();
 
         try {
@@ -206,7 +210,7 @@ public class MySQLWhitelistVelocity {
 
     }
 
-    public BrigadierCommand createBrigadierCommand(final ProxyServer proxy) {
+    public BrigadierCommand createBrigadierCommand() {
         LiteralCommandNode<CommandSource> helloNode = BrigadierCommand.literalArgumentBuilder("mywl")
                 .requires(source -> source.hasPermission("mysqlwhitelist"))
                 .executes(context -> {
@@ -215,19 +219,19 @@ public class MySQLWhitelistVelocity {
                     return Command.SINGLE_SUCCESS;
                 })
                 .then(BrigadierCommand.requiredArgumentBuilder("argument", StringArgumentType.greedyString())
-                        .suggests((ctx, builder) -> {
-                            builder.suggest("add").suggest("del");
+                                .suggests((ctx, builder) -> {
+                                    builder.suggest("add").suggest("del");
 //                                    .suggest("on").suggest("off");
-                            return builder.buildFuture();
-                        })
-                        .executes(context -> {
-                            CommandSource source = context.getSource();
-                            String[] arguments = context.getArgument("argument", String.class).split(" ");
-                            if (arguments.length==1){
-                                if (arguments[0].equals("add")){
-                                    sendUsageMessage(source, "add");
-                                } else if (arguments[0].equals("del")) {
-                                    sendUsageMessage(source, "del");
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> {
+                                    CommandSource source = context.getSource();
+                                    String[] arguments = context.getArgument("argument", String.class).split(" ");
+                                    if (arguments.length == 1) {
+                                        if (arguments[0].equals("add")) {
+                                            sendUsageMessage(source, "add");
+                                        } else if (arguments[0].equals("del")) {
+                                            sendUsageMessage(source, "del");
 //                                } else if (arguments[0].equals("on")) {
 //                                    config.setProperty("enabled", String.valueOf(true));
 //                                    saveConfig(config);
@@ -236,27 +240,28 @@ public class MySQLWhitelistVelocity {
 //                                    config.setProperty("enabled", String.valueOf(false));
 //                                    saveConfig(config);
 //                                    source.sendMessage(Component.text("Whitelist disabled", NamedTextColor.AQUA));
-                                }else {
-                                    sendUsageMessage(source, "all");
-                                }
-                            } else if (arguments.length==2) {
-                                if (arguments[0].equals("add")){
-                                    addWhitelist(source,arguments[1]);
-                                } else if (arguments[0].equals("del")) {
-                                    delWhitelist(source,arguments[1]);
-                                }else {
-                                    sendUsageMessage(source, "all");
-                                }
-                            }else {
-                                sendUsageMessage(source, "all");
-                            }
-                            return Command.SINGLE_SUCCESS;
-                        })
+                                        } else {
+                                            sendUsageMessage(source, "all");
+                                        }
+                                    } else if (arguments.length == 2) {
+                                        if (arguments[0].equals("add")) {
+                                            addWhitelist(source, arguments[1]);
+                                        } else if (arguments[0].equals("del")) {
+                                            delWhitelist(source, arguments[1]);
+                                        } else {
+                                            sendUsageMessage(source, "all");
+                                        }
+                                    } else {
+                                        sendUsageMessage(source, "all");
+                                    }
+                                    return Command.SINGLE_SUCCESS;
+                                })
                 )
                 .build();
 
         return new BrigadierCommand(helloNode);
     }
+
     public void sendUsageMessage(CommandSource source, String subcommand) {
         String usage = switch (subcommand) {
 //            case "all" -> "/mywl add/del/on/off <player>";
@@ -272,6 +277,7 @@ public class MySQLWhitelistVelocity {
             source.sendMessage(message);
         }
     }
+
     public boolean isWhitelisted(Player player) {
         try {
             openConnection();
@@ -324,6 +330,7 @@ public class MySQLWhitelistVelocity {
 
         return true;
     }
+
     @Subscribe
     public void onPlayerLogin(LoginEvent event) {
         Player player = event.getPlayer();
